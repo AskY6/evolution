@@ -1,0 +1,156 @@
+[
+  {
+    "_description": "Simple bar chart — monthly revenue",
+    "schemaId": "bi",
+    "schemaVersion": "0.1.0",
+    "payload": {
+      "chartType": "bar",
+      "title": "Monthly Revenue",
+      "dataSource": {
+        "metrics": ["revenue"],
+        "dimensions": ["month"]
+      },
+      "xAxis": { "field": "month", "label": "Month" },
+      "yAxis": { "field": "revenue", "label": "Revenue ($)" },
+      "series": [
+        { "name": "Revenue", "field": "revenue", "color": "#5470c6" }
+      ]
+    }
+  },
+  {
+    "_description": "Line chart — user growth trend",
+    "schemaId": "bi",
+    "schemaVersion": "0.1.0",
+    "payload": {
+      "chartType": "line",
+      "title": "User Growth",
+      "dataSource": {
+        "metrics": ["userCount"],
+        "dimensions": ["week"]
+      },
+      "xAxis": { "field": "week", "label": "Week" },
+      "yAxis": { "field": "userCount", "label": "Users" },
+      "series": [
+        { "name": "Users", "field": "userCount" }
+      ]
+    }
+  },
+  {
+    "_description": "Bar chart with filter — revenue in APAC region",
+    "schemaId": "bi",
+    "schemaVersion": "0.1.0",
+    "payload": {
+      "chartType": "bar",
+      "dataSource": {
+        "metrics": ["revenue"],
+        "dimensions": ["product"],
+        "filters": [
+          { "field": "region", "operator": "=", "value": "APAC" }
+        ]
+      },
+      "xAxis": { "field": "product", "label": "Product" },
+      "yAxis": { "field": "revenue", "label": "Revenue" },
+      "series": [
+        { "name": "Revenue", "field": "revenue" }
+      ]
+    }
+  },
+  {
+    "_description": "Multi-series bar chart — revenue vs cost by quarter",
+    "schemaId": "bi",
+    "schemaVersion": "0.1.0",
+    "payload": {
+      "chartType": "bar",
+      "title": "Revenue vs Cost",
+      "dataSource": {
+        "metrics": ["revenue", "cost"],
+        "dimensions": ["quarter"]
+      },
+      "xAxis": { "field": "quarter", "label": "Quarter" },
+      "yAxis": { "field": "revenue", "label": "Amount ($)" },
+      "series": [
+        { "name": "Revenue", "field": "revenue", "color": "#5470c6" },
+        { "name": "Cost", "field": "cost", "color": "#ee6666" }
+      ]
+    }
+  },
+  {
+    "_description": "Line chart with sort — top products by sales descending",
+    "schemaId": "bi",
+    "schemaVersion": "0.1.0",
+    "payload": {
+      "chartType": "line",
+      "title": "Product Sales Ranking",
+      "dataSource": {
+        "metrics": ["sales"],
+        "dimensions": ["product"],
+        "sort": { "field": "sales", "order": "desc" }
+      },
+      "xAxis": { "field": "product", "label": "Product" },
+      "yAxis": { "field": "sales", "label": "Sales" },
+      "series": [
+        { "name": "Sales", "field": "sales" }
+      ]
+    }
+  },
+  {
+    "_description": "Bar chart with IN filter — select specific regions",
+    "schemaId": "bi",
+    "schemaVersion": "0.1.0",
+    "payload": {
+      "chartType": "bar",
+      "title": "Revenue by Region (Selected)",
+      "dataSource": {
+        "metrics": ["revenue"],
+        "dimensions": ["region"],
+        "filters": [
+          { "field": "region", "operator": "in", "value": ["NA", "EMEA", "APAC"] }
+        ]
+      },
+      "xAxis": { "field": "region", "label": "Region" },
+      "yAxis": { "field": "revenue", "label": "Revenue" },
+      "series": [
+        { "name": "Revenue", "field": "revenue" }
+      ]
+    }
+  },
+  {
+    "_description": "Line chart with multiple filters — high-value APAC customers",
+    "schemaId": "bi",
+    "schemaVersion": "0.1.0",
+    "payload": {
+      "chartType": "line",
+      "title": "High-Value APAC Orders",
+      "dataSource": {
+        "metrics": ["orderCount"],
+        "dimensions": ["month"],
+        "filters": [
+          { "field": "region", "operator": "=", "value": "APAC" },
+          { "field": "orderValue", "operator": ">", "value": 1000 }
+        ]
+      },
+      "xAxis": { "field": "month", "label": "Month" },
+      "yAxis": { "field": "orderCount", "label": "Orders" },
+      "series": [
+        { "name": "Orders", "field": "orderCount" }
+      ]
+    }
+  },
+  {
+    "_description": "Minimal bar chart — no title, no filters, no sort",
+    "schemaId": "bi",
+    "schemaVersion": "0.1.0",
+    "payload": {
+      "chartType": "bar",
+      "dataSource": {
+        "metrics": ["count"],
+        "dimensions": ["category"]
+      },
+      "xAxis": { "field": "category" },
+      "yAxis": { "field": "count" },
+      "series": [
+        { "name": "Count", "field": "count" }
+      ]
+    }
+  }
+]
