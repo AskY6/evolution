@@ -10,3 +10,12 @@ export { left, right, isLeft, isRight } from "./adapter.js";
 
 // DemonstrationSource interface
 export type { DemonstrationSource } from "./observer.js";
+
+// Validator
+export { validateInstance, validateCandidateInstance } from "./validator.js";
+
+// Comparator
+export { compare, isEquivalent } from "./comparator.js";
+
+// Schema Registry
+export { SchemaRegistry, materialize } from "./schema-registry.js";
