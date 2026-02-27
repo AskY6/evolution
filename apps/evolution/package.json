@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "MOCK=1 node dist/index.js",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
@@ -13,6 +15,7 @@
     "@evolution/bi": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   }
 }

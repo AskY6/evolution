@@ -19,3 +19,6 @@ export { compare, isEquivalent } from "./comparator.js";
 
 // Schema Registry
 export { SchemaRegistry, materialize } from "./schema-registry.js";
+
+// Actions
+export type { ApproximateAction } from "./actions/index.js";
