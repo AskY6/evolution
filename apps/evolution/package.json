@@ -11,8 +11,9 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@evolution/bi": "workspace:*",
     "@evolution/core": "workspace:*",
-    "@evolution/bi": "workspace:*"
+    "@openrouter/sdk": "^0.9.11"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
