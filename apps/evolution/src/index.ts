@@ -2,20 +2,21 @@
  * Application entry point — assembles @evolution/core + @evolution/bi.
  *
  * Usage:
- *   ANTHROPIC_API_KEY=sk-... node dist/index.js          # real LLM
+ *   OPENROUTER_API_KEY=sk-... node dist/index.js         # real LLM
  *   MOCK=1 node dist/index.js                            # mock LLM (dev/test)
  *
  * Environment variables:
- *   ANTHROPIC_API_KEY — required for real LLM mode
- *   ANTHROPIC_MODEL   — optional, defaults to claude-sonnet-4-20250514
- *   PORT              — server port, defaults to 3000
- *   MOCK              — set to "1" to use mock LLM
+ *   OPENROUTER_API_KEY — required for real LLM mode
+ *   OPENROUTER_MODEL   — optional, defaults to anthropic/claude-sonnet-4
+ *   PORT               — server port, defaults to 3000
+ *   MOCK               — set to "1" to use mock LLM
  */
 
 import { SchemaRegistry } from "@evolution/core";
 import type { Schema } from "@evolution/core";
-import { BiAdapter, BiApproximate, AnthropicProvider, MockLLMProvider } from "@evolution/bi";
-import type { LLMProvider } from "@evolution/bi";
+import { BiAdapter, BiApproximate } from "@evolution/bi";
+import type { LLM } from "@evolution/bi";
+import { createOpenRouterLLM, createMockLLM } from "./llm.js";
 import { createServer } from "./server.js";
 
 // ---------------------------------------------------------------------------
@@ -90,10 +91,10 @@ const biSchemaV010: Schema = {
 // Assembly
 // ---------------------------------------------------------------------------
 
-function createLLMProvider(): LLMProvider {
+function createLLM(): LLM {
   if (process.env.MOCK === "1") {
-    console.log("Using mock LLM provider");
-    return new MockLLMProvider([
+    console.log("Using mock LLM");
+    return createMockLLM([
       JSON.stringify({
         chartType: "bar",
         title: "Sample Chart",
@@ -105,15 +106,15 @@ function createLLMProvider(): LLMProvider {
     ]);
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    console.error("Error: ANTHROPIC_API_KEY is required (or set MOCK=1 for development)");
+    console.error("Error: OPENROUTER_API_KEY is required (or set MOCK=1 for development)");
     process.exit(1);
   }
 
-  const model = process.env.ANTHROPIC_MODEL ?? undefined;
-  console.log(`Using Anthropic provider (model: ${model ?? "default"})`);
-  return new AnthropicProvider({ apiKey, model });
+  const model = process.env.OPENROUTER_MODEL ?? undefined;
+  console.log(`Using OpenRouter (model: ${model ?? "default"})`);
+  return createOpenRouterLLM({ apiKey, model });
 }
 
 function main(): void {
@@ -122,7 +123,7 @@ function main(): void {
 
   const schema = registry.current();
   const adapter = new BiAdapter();
-  const llm = createLLMProvider();
+  const llm = createLLM();
   const approximate = new BiApproximate(llm);
 
   const port = parseInt(process.env.PORT ?? "3000", 10);

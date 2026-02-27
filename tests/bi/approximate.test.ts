@@ -1,8 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { BiApproximate } from "../../packages/bi/src/approximate.js";
-import { MockLLMProvider } from "../../packages/bi/src/llm.js";
+import type { LLM } from "../../packages/bi/src/llm.js";
 import type { Schema, Demonstration } from "@evolution/core";
 import { isLeft, isRight } from "@evolution/core";
+
+function mockLLM(responses: string[]): LLM {
+  let i = 0;
+  return async () => {
+    if (i >= responses.length) throw new Error("No more responses");
+    return responses[i++];
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -74,7 +82,7 @@ describe("BiApproximate", () => {
       series: [{ name: "Revenue", field: "revenue" }],
     });
 
-    const approx = new BiApproximate(new MockLLMProvider([mockResponse]));
+    const approx = new BiApproximate(mockLLM([mockResponse]));
     const result = await approx.approximate(schema, queryDemo("Show monthly revenue as a bar chart"));
 
     expect(isRight(result)).toBe(true);
@@ -89,7 +97,7 @@ describe("BiApproximate", () => {
   it("handles markdown-fenced JSON responses", async () => {
     const fencedResponse = '```json\n{"chartType":"line","dataSource":{"metrics":["count"],"dimensions":["day"]},"xAxis":{"field":"day"},"yAxis":{"field":"count"},"series":[{"name":"Count","field":"count"}]}\n```';
 
-    const approx = new BiApproximate(new MockLLMProvider([fencedResponse]));
+    const approx = new BiApproximate(mockLLM([fencedResponse]));
     const result = await approx.approximate(schema, queryDemo("Daily counts as line chart"));
 
     expect(isRight(result)).toBe(true);
@@ -98,7 +106,7 @@ describe("BiApproximate", () => {
   });
 
   it("returns Left for invalid JSON response", async () => {
-    const approx = new BiApproximate(new MockLLMProvider(["This is not JSON at all"]));
+    const approx = new BiApproximate(mockLLM(["This is not JSON at all"]));
     const result = await approx.approximate(schema, queryDemo("anything"));
 
     expect(isLeft(result)).toBe(true);
@@ -108,8 +116,7 @@ describe("BiApproximate", () => {
   });
 
   it("returns Left when LLM provider throws", async () => {
-    const failProvider = new MockLLMProvider([]); // no responses → throws
-    const approx = new BiApproximate(failProvider);
+    const approx = new BiApproximate(mockLLM([])); // no responses → throws
     const result = await approx.approximate(schema, queryDemo("anything"));
 
     expect(isLeft(result)).toBe(true);
@@ -126,7 +133,7 @@ describe("BiApproximate", () => {
       series: [{ name: "Sales", field: "sales" }],
     });
 
-    const approx = new BiApproximate(new MockLLMProvider([mockResponse]));
+    const approx = new BiApproximate(mockLLM([mockResponse]));
     const demo: Demonstration = {
       id: "test",
       timestamp: new Date().toISOString(),
@@ -147,7 +154,7 @@ describe("BiApproximate", () => {
       series: [{ name: "X", field: "x" }],
     });
 
-    const approx = new BiApproximate(new MockLLMProvider([mockResponse]));
+    const approx = new BiApproximate(mockLLM([mockResponse]));
     const demo: Demonstration = {
       id: "test",
       timestamp: new Date().toISOString(),
@@ -177,7 +184,7 @@ describe("BiApproximate — full chain", () => {
       series: [{ name: "Revenue", field: "revenue", color: "#5470c6" }],
     });
 
-    const approx = new BiApproximate(new MockLLMProvider([mockResponse]));
+    const approx = new BiApproximate(mockLLM([mockResponse]));
     const adapter = new BiAdapter();
 
     // Step 1: approximate

@@ -14,24 +14,20 @@ import type {
   Either,
 } from "@evolution/core";
 import { left, right } from "@evolution/core";
-import type { LLMProvider } from "./llm.js";
+import type { LLM } from "./llm.js";
 
 export class BiApproximate implements ApproximateAction {
-  constructor(private readonly llm: LLMProvider) {}
+  constructor(private readonly llm: LLM) {}
 
   async approximate(
     schema: Schema,
     demonstration: Demonstration,
   ): Promise<Either<ApproximateError, Instance>> {
     const userQuery = extractQuery(demonstration);
-    const systemPrompt = buildSystemPrompt(schema);
-    const userPrompt = buildUserPrompt(userQuery);
+    const prompt = buildPrompt(schema, userQuery);
 
     try {
-      const raw = await this.llm.generate([
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ]);
+      const raw = await this.llm(prompt);
 
       const payload = parseJsonFromResponse(raw);
 
@@ -54,7 +50,7 @@ export class BiApproximate implements ApproximateAction {
 // Prompt construction
 // ---------------------------------------------------------------------------
 
-function buildSystemPrompt(schema: Schema): string {
+function buildPrompt(schema: Schema, query: string): string {
   const fieldsDescription = schema.fields
     .map((f) => {
       let typeDesc: string = f.type.kind;
@@ -88,11 +84,9 @@ IMPORTANT:
 - chartType must be one of the supported types.
 - dataSource must include metrics and dimensions arrays.
 - series array must have at least one entry.
-- xAxis.field should reference a dimension, yAxis.field should reference a metric.`;
-}
+- xAxis.field should reference a dimension, yAxis.field should reference a metric.
 
-function buildUserPrompt(query: string): string {
-  return `Create a chart configuration for the following request:\n\n${query}`;
+User request: ${query}`;
 }
 
 // ---------------------------------------------------------------------------

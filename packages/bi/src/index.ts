@@ -3,8 +3,7 @@
 
 export { BiAdapter } from "./adapter.js";
 export { BiApproximate } from "./approximate.js";
-export type { LLMProvider, Message, AnthropicConfig } from "./llm.js";
-export { AnthropicProvider, MockLLMProvider } from "./llm.js";
+export type { LLM } from "./llm.js";
 export type {
   BiPayload,
   DataSource,
