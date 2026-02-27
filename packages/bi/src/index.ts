@@ -3,6 +3,7 @@
 
 export { BiAdapter } from "./adapter.js";
 export { BiApproximate } from "./approximate.js";
+export { assessBiSeverity, isBiGapAcceptable, type BiSeverityAssessment } from "./fingerprint.js";
 export type { LLM } from "./llm.js";
 export type {
   BiPayload,

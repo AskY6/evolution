@@ -22,3 +22,12 @@ export { SchemaRegistry, materialize } from "./schema-registry.js";
 
 // Actions
 export type { ApproximateAction } from "./actions/index.js";
+
+// Pipelines
+export {
+  runApproximation,
+  SEVERITY_ORDINAL,
+  type ApproximationInput,
+  type ApproximationResult,
+  type ApproximationConfig,
+} from "./pipelines/index.js";
