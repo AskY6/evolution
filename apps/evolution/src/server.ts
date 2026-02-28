@@ -1,5 +1,5 @@
 /**
- * Minimal API server — parse → compile → execute endpoints.
+ * Minimal API server — parse → compile → execute → evolve endpoints.
  *
  * Uses Node built-in http module (no external dependencies).
  *
@@ -8,22 +8,28 @@
  *   POST /compile  — Instance → Executable (ECharts option)
  *   POST /execute  — Executable → Behavior
  *   POST /generate — { query: string } → ECharts option (combined pipeline)
+ *   POST /evolve   — { query: string, observed: object } → EvolutionResult
  *   GET  /health   — health check
  *   GET  /schema   — current schema
  */
 
 import * as http from "node:http";
-import type { Schema, Instance, Executable, ApproximateAction, DomainAdapter } from "@evolution/core";
-import { isLeft } from "@evolution/core";
+import type { Schema, Instance, Executable, ApproximateAction, DomainAdapter, Memory, ConvergenceConfig } from "@evolution/core";
+import type { ExtendAction } from "@evolution/core";
+import { isLeft, runEvolution, EvolutionOutcome } from "@evolution/core";
 
 export interface ServerDeps {
   readonly schema: Schema;
   readonly adapter: DomainAdapter;
   readonly approximate: ApproximateAction;
+  readonly extend: ExtendAction;
+  readonly getMemory: () => Memory;
+  readonly setMemory: (memory: Memory) => void;
+  readonly convergenceConfig: ConvergenceConfig;
 }
 
 export function createServer(deps: ServerDeps): http.Server {
-  const { schema, adapter, approximate } = deps;
+  const { schema, adapter, approximate, extend, getMemory, setMemory, convergenceConfig } = deps;
 
   return http.createServer(async (req, res) => {
     // CORS
@@ -46,7 +52,7 @@ export function createServer(deps: ServerDeps): http.Server {
       }
 
       if (req.method === "GET" && url.pathname === "/schema") {
-        json(res, 200, schema);
+        json(res, 200, getMemory().currentSchema);
         return;
       }
 
@@ -69,6 +75,9 @@ export function createServer(deps: ServerDeps): http.Server {
           break;
         case "/generate":
           await handleGenerate(res, body, schema, adapter, approximate);
+          break;
+        case "/evolve":
+          await handleEvolve(res, body, adapter, approximate, extend, getMemory, setMemory, convergenceConfig);
           break;
         default:
           json(res, 404, { error: `Unknown endpoint: ${url.pathname}` });
@@ -177,6 +186,65 @@ async function handleGenerate(
     instance: parseResult.right,
     executable: compileResult.right,
   });
+}
+
+async function handleEvolve(
+  res: http.ServerResponse,
+  body: unknown,
+  adapter: DomainAdapter,
+  approximate: ApproximateAction,
+  extend: ExtendAction,
+  getMemory: () => Memory,
+  setMemory: (memory: Memory) => void,
+  convergenceConfig: ConvergenceConfig,
+): Promise<void> {
+  const { query, observed } = body as { query?: string; observed?: Record<string, unknown> };
+  if (!query || typeof query !== "string") {
+    json(res, 400, { error: "Missing 'query' string in request body" });
+    return;
+  }
+  if (!observed || typeof observed !== "object") {
+    json(res, 400, { error: "Missing 'observed' object in request body (expected behavior fingerprint)" });
+    return;
+  }
+
+  const memory = getMemory();
+
+  const demonstration = {
+    id: `evolve-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    source: { type: "user_query", raw: query },
+    observedBehavior: { fingerprint: observed },
+  };
+
+  const result = await runEvolution({
+    memory,
+    demonstration,
+    adapter,
+    approximateAction: approximate,
+    extendAction: extend,
+    convergenceConfig,
+  });
+
+  // If evolved, update memory
+  if (result.kind === "evolved") {
+    const updatedMemory: Memory = {
+      currentSchema: result.newSchema,
+      schemaHistory: [...memory.schemaHistory, result.newSchema],
+      records: [...memory.records, {
+        id: `evo-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        demonstrationId: demonstration.id,
+        outcome: EvolutionOutcome.Success,
+        fromSchemaVersion: memory.currentSchema.version,
+        toSchemaVersion: result.newSchema.version,
+        iterations: result.iterations,
+      }],
+    };
+    setMemory(updatedMemory);
+  }
+
+  json(res, 200, result);
 }
 
 // ---------------------------------------------------------------------------

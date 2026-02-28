@@ -22,6 +22,7 @@ export { SchemaRegistry, materialize } from "./schema-registry.js";
 
 // Actions
 export type { ApproximateAction } from "./actions/index.js";
+export type { ExtendAction, ExtendResult } from "./actions/index.js";
 
 // Pipelines
 export {
@@ -31,3 +32,28 @@ export {
   type ApproximationResult,
   type ApproximationConfig,
 } from "./pipelines/index.js";
+
+export {
+  runExtension,
+  constraintsToGap,
+  type ExtensionInput,
+  type ExtensionResult,
+} from "./pipelines/index.js";
+
+export {
+  runCodification,
+  type CodificationInput,
+} from "./pipelines/index.js";
+
+export {
+  runEvolution,
+  type EvolutionInput,
+} from "./pipelines/index.js";
+
+// Reporter
+export {
+  generateCaseReport,
+  formatCaseReport,
+  buildCaseFiles,
+  type CaseReport,
+} from "./reporter.js";

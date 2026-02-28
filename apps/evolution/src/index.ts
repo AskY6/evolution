@@ -12,9 +12,9 @@
  *   MOCK               — set to "1" to use mock LLM
  */
 
-import { SchemaRegistry } from "@evolution/core";
-import type { Schema } from "@evolution/core";
-import { BiAdapter, BiApproximate } from "@evolution/bi";
+import { SchemaRegistry, runEvolution } from "@evolution/core";
+import type { Schema, Memory, ConvergenceConfig } from "@evolution/core";
+import { BiAdapter, BiApproximate, BiExtend } from "@evolution/bi";
 import type { LLM } from "@evolution/bi";
 import { createOpenRouterLLM, createMockLLM } from "./llm.js";
 import { createServer } from "./server.js";
@@ -95,6 +95,7 @@ function createLLM(): LLM {
   if (process.env.MOCK === "1") {
     console.log("Using mock LLM");
     return createMockLLM([
+      // Mock approximate response
       JSON.stringify({
         chartType: "bar",
         title: "Sample Chart",
@@ -102,6 +103,23 @@ function createLLM(): LLM {
         xAxis: { field: "category" },
         yAxis: { field: "value" },
         series: [{ name: "Value", field: "value" }],
+      }),
+      // Mock extend response
+      JSON.stringify({
+        extension: {
+          id: "add-mock-field",
+          description: "Mock extension for testing",
+          newFields: [],
+          newRules: [],
+        },
+        basePayload: {
+          chartType: "bar",
+          dataSource: { metrics: ["value"], dimensions: ["category"] },
+          xAxis: { field: "category" },
+          yAxis: { field: "value" },
+          series: [{ name: "Value", field: "value" }],
+        },
+        extensionPayload: {},
       }),
     ]);
   }
@@ -117,6 +135,14 @@ function createLLM(): LLM {
   return createOpenRouterLLM({ apiKey, model });
 }
 
+function createInitialMemory(schema: Schema): Memory {
+  return {
+    currentSchema: schema,
+    schemaHistory: [schema],
+    records: [],
+  };
+}
+
 function main(): void {
   const registry = new SchemaRegistry();
   registry.load(biSchemaV010);
@@ -125,9 +151,24 @@ function main(): void {
   const adapter = new BiAdapter();
   const llm = createLLM();
   const approximate = new BiApproximate(llm);
+  const extend = new BiExtend(llm);
+  let memory = createInitialMemory(schema);
+
+  const convergenceConfig: ConvergenceConfig = {
+    maxIterations: 5,
+    gapThreshold: 2, // Moderate or below = converged
+  };
 
   const port = parseInt(process.env.PORT ?? "3000", 10);
-  const server = createServer({ schema, adapter, approximate });
+  const server = createServer({
+    schema,
+    adapter,
+    approximate,
+    extend,
+    getMemory: () => memory,
+    setMemory: (m: Memory) => { memory = m; },
+    convergenceConfig,
+  });
 
   server.listen(port, () => {
     console.log(`Evolution server running on http://localhost:${port}`);
@@ -139,6 +180,7 @@ function main(): void {
     console.log(`  POST /compile  — Instance → Executable (ECharts option)`);
     console.log(`  POST /execute  — Executable → Behavior (fingerprint)`);
     console.log(`  POST /generate — { "query": "..." } → Instance + ECharts option`);
+    console.log(`  POST /evolve   — { "query": "...", "observed": {...} } → EvolutionResult`);
     console.log();
     console.log("Example:");
     console.log(`  curl -X POST http://localhost:${port}/generate \\`);
