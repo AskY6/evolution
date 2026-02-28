@@ -1,0 +1,112 @@
+{
+  "id": "bi",
+  "version": "0.1.0",
+  "fields": [
+    {
+      "name": "chartType",
+      "description": "Type of chart to render",
+      "type": { "kind": "string", "enum": ["bar", "line"] },
+      "required": true
+    },
+    {
+      "name": "title",
+      "description": "Chart title text",
+      "type": { "kind": "string" },
+      "required": false
+    },
+    {
+      "name": "dataSource",
+      "description": "Data query configuration",
+      "type": {
+        "kind": "object",
+        "fields": [
+          {
+            "name": "metrics",
+            "description": "Measure fields to aggregate",
+            "type": { "kind": "array", "element": { "kind": "string" }, "minItems": 1 },
+            "required": true
+          },
+          {
+            "name": "dimensions",
+            "description": "Dimension fields to group by",
+            "type": { "kind": "array", "element": { "kind": "string" }, "minItems": 1 },
+            "required": true
+          },
+          {
+            "name": "filters",
+            "description": "Data filter conditions",
+            "type": {
+              "kind": "array",
+              "element": {
+                "kind": "object",
+                "fields": [
+                  { "name": "field", "description": "Field to filter on", "type": { "kind": "string" }, "required": true },
+                  { "name": "operator", "description": "Comparison operator", "type": { "kind": "string", "enum": ["=", "!=", ">", "<", ">=", "<=", "in"] }, "required": true },
+                  { "name": "value", "description": "Filter value", "type": { "kind": "union", "variants": [{ "kind": "string" }, { "kind": "number" }, { "kind": "boolean" }, { "kind": "array", "element": { "kind": "string" } }] }, "required": true }
+                ]
+              }
+            },
+            "required": false
+          },
+          {
+            "name": "sort",
+            "description": "Sort configuration",
+            "type": {
+              "kind": "object",
+              "fields": [
+                { "name": "field", "description": "Field to sort by", "type": { "kind": "string" }, "required": true },
+                { "name": "order", "description": "Sort direction", "type": { "kind": "string", "enum": ["asc", "desc"] }, "required": true }
+              ]
+            },
+            "required": false
+          }
+        ]
+      },
+      "required": true
+    },
+    {
+      "name": "xAxis",
+      "description": "X-axis configuration",
+      "type": {
+        "kind": "object",
+        "fields": [
+          { "name": "field", "description": "Dimension field for x-axis", "type": { "kind": "string" }, "required": true },
+          { "name": "label", "description": "X-axis display label", "type": { "kind": "string" }, "required": false }
+        ]
+      },
+      "required": true
+    },
+    {
+      "name": "yAxis",
+      "description": "Y-axis configuration",
+      "type": {
+        "kind": "object",
+        "fields": [
+          { "name": "field", "description": "Metric field for y-axis", "type": { "kind": "string" }, "required": true },
+          { "name": "label", "description": "Y-axis display label", "type": { "kind": "string" }, "required": false }
+        ]
+      },
+      "required": true
+    },
+    {
+      "name": "series",
+      "description": "Data series to display",
+      "type": {
+        "kind": "array",
+        "element": {
+          "kind": "object",
+          "fields": [
+            { "name": "name", "description": "Series display name", "type": { "kind": "string" }, "required": true },
+            { "name": "field", "description": "Metric field for this series", "type": { "kind": "string" }, "required": true },
+            { "name": "color", "description": "Series color", "type": { "kind": "string" }, "required": false }
+          ]
+        },
+        "minItems": 1
+      },
+      "required": true
+    }
+  ],
+  "rules": [
+    { "kind": "depends_on", "field": "title", "requires": "chartType" }
+  ]
+}

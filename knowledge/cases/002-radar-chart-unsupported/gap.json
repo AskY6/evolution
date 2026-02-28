@@ -1,0 +1,19 @@
+{
+  "source": "behavioral",
+  "discrepancies": [
+    {
+      "path": "render.chartType",
+      "type": "value_mismatch",
+      "expected": "radar",
+      "actual": "bar"
+    },
+    {
+      "path": "render.seriesTypes[0]",
+      "type": "value_mismatch",
+      "expected": "radar",
+      "actual": "bar"
+    }
+  ],
+  "severity": "moderate",
+  "summary": "2 discrepancies: 2 value mismatch."
+}

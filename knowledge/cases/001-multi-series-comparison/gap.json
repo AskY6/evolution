@@ -1,0 +1,37 @@
+{
+  "source": "behavioral",
+  "discrepancies": [
+    {
+      "path": "render.seriesCount",
+      "type": "value_mismatch",
+      "expected": 2,
+      "actual": 1
+    },
+    {
+      "path": "render.hasTitle",
+      "type": "value_mismatch",
+      "expected": true,
+      "actual": false
+    },
+    {
+      "path": "render.hasLegend",
+      "type": "value_mismatch",
+      "expected": true,
+      "actual": false
+    },
+    {
+      "path": "api.metrics[1]",
+      "type": "missing",
+      "expected": "cost",
+      "actual": null
+    },
+    {
+      "path": "render.seriesTypes[1]",
+      "type": "missing",
+      "expected": "bar",
+      "actual": null
+    }
+  ],
+  "severity": "critical",
+  "summary": "5 discrepancies: 2 missing, 3 value mismatch."
+}

@@ -4,19 +4,20 @@
  * Uses Node built-in http module (no external dependencies).
  *
  * Endpoints:
- *   POST /parse    — { query: string } → Instance
- *   POST /compile  — Instance → Executable (ECharts option)
- *   POST /execute  — Executable → Behavior
- *   POST /generate — { query: string } → ECharts option (combined pipeline)
- *   POST /evolve   — { query: string, observed: object } → EvolutionResult
- *   GET  /health   — health check
- *   GET  /schema   — current schema
+ *   POST /parse         — { query: string } → Instance
+ *   POST /compile       — Instance → Executable (ECharts option)
+ *   POST /execute       — Executable → Behavior
+ *   POST /generate      — { query: string } → ECharts option (combined pipeline)
+ *   POST /evolve        — { query: string, observed: object } → EvolutionResult
+ *   POST /evolve-report — { query: string, observed: object } → { result, report, caseFiles }
+ *   GET  /health        — health check
+ *   GET  /schema        — current schema
  */
 
 import * as http from "node:http";
-import type { Schema, Instance, Executable, ApproximateAction, DomainAdapter, Memory, ConvergenceConfig } from "@evolution/core";
+import type { Schema, Instance, Executable, ApproximateAction, DomainAdapter, Memory, ConvergenceConfig, ApproximationResult, ExtensionResult } from "@evolution/core";
 import type { ExtendAction } from "@evolution/core";
-import { isLeft, runEvolution, EvolutionOutcome } from "@evolution/core";
+import { isLeft, runEvolution, runApproximation, runExtension, runCodification, generateCaseReport, buildCaseFiles, EvolutionOutcome } from "@evolution/core";
 
 export interface ServerDeps {
   readonly schema: Schema;
@@ -78,6 +79,9 @@ export function createServer(deps: ServerDeps): http.Server {
           break;
         case "/evolve":
           await handleEvolve(res, body, adapter, approximate, extend, getMemory, setMemory, convergenceConfig);
+          break;
+        case "/evolve-report":
+          await handleEvolveReport(res, body, schema, adapter, approximate, extend, getMemory, setMemory, convergenceConfig);
           break;
         default:
           json(res, 404, { error: `Unknown endpoint: ${url.pathname}` });
@@ -245,6 +249,89 @@ async function handleEvolve(
   }
 
   json(res, 200, result);
+}
+
+async function handleEvolveReport(
+  res: http.ServerResponse,
+  body: unknown,
+  schema: Schema,
+  adapter: DomainAdapter,
+  approximate: ApproximateAction,
+  extend: ExtendAction,
+  getMemory: () => Memory,
+  setMemory: (memory: Memory) => void,
+  convergenceConfig: ConvergenceConfig,
+): Promise<void> {
+  const { query, observed } = body as { query?: string; observed?: Record<string, unknown> };
+  if (!query || typeof query !== "string") {
+    json(res, 400, { error: "Missing 'query' string in request body" });
+    return;
+  }
+  if (!observed || typeof observed !== "object") {
+    json(res, 400, { error: "Missing 'observed' object in request body (expected behavior fingerprint)" });
+    return;
+  }
+
+  const memory = getMemory();
+
+  const demonstration = {
+    id: `evolve-report-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    source: { type: "user_query" as const, raw: query },
+    observedBehavior: { fingerprint: observed },
+  };
+
+  // Phase A: Approximation
+  const approxResult: ApproximationResult = await runApproximation({
+    schema: memory.currentSchema,
+    demonstration,
+    adapter,
+    approximateAction: approximate,
+  });
+
+  // Phase B: Extension (if insufficient)
+  let extResult: ExtensionResult | undefined;
+  if (approxResult.kind === "insufficient") {
+    extResult = await runExtension({
+      schema: memory.currentSchema,
+      gap: approxResult.gap,
+      demonstration,
+      adapter,
+      extendAction: extend,
+      config: convergenceConfig,
+    });
+  }
+
+  // Phase C: Codification (if converged)
+  let updatedMemory: Memory | undefined;
+  if (extResult?.kind === "converged" && approxResult.kind === "insufficient") {
+    const codifyResult = runCodification({
+      memory,
+      candidateSchema: extResult.candidateSchema,
+      candidateInstance: extResult.candidateInstance,
+      demonstrationId: demonstration.id,
+      gap: approxResult.gap,
+      iterations: extResult.iterations,
+    });
+
+    if (codifyResult._tag === "Right") {
+      updatedMemory = codifyResult.right;
+      setMemory(updatedMemory);
+    }
+  }
+
+  // Generate report
+  const report = generateCaseReport({
+    demonstrationId: demonstration.id,
+    schemaBefore: memory.currentSchema,
+    approximationResult: approxResult,
+    extensionResult: extResult,
+    updatedMemory,
+  });
+
+  const caseFiles = buildCaseFiles(report);
+
+  json(res, 200, { result: report.outcome, report, caseFiles });
 }
 
 // ---------------------------------------------------------------------------
