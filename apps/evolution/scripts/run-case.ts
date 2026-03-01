@@ -1,17 +1,10 @@
 /**
- * CLI Evolution Runner — runs the full evolution pipeline step-by-step,
- * capturing intermediate results for case reporting.
+ * Script-based Evolution Runner — construct parameters directly in code
+ * instead of parsing CLI arguments.
  *
  * Usage:
- *   MOCK=1 node dist/run-evolution.js --case-id 001 --slug multi-series-comparison \
- *     --query "quarterly revenue vs cost comparison bar chart" \
- *     --observed '{"api":{...},"render":{...}}'
- *
- * Composes sub-pipelines individually (runApproximation → runExtension →
- * runCodification) instead of runEvolution(), because generateCaseReport()
- * needs ApproximationResult and ExtensionResult as separate inputs.
- *
- * Writes case files to knowledge/cases/{caseId}-{slug}/.
+ *   OPENROUTER_API_KEY=sk-... npx tsx --env-file=.env scripts/run-case.ts
+ *   MOCK=1 npx tsx scripts/run-case.ts
  */
 
 import * as fs from "node:fs";
@@ -26,112 +19,34 @@ import {
 } from "@evolution/core";
 import type { Memory, ConvergenceConfig, ApproximationResult, ExtensionResult } from "@evolution/core";
 import { BiAdapter, BiApproximate, BiExtend } from "@evolution/bi";
-import type { LLM } from "@evolution/bi";
-import { createOpenRouterLLM, createMockLLM } from "./llm.js";
-import { biSchemaV010 } from "./schema.js";
+import { createOpenRouterLLM, createMockLLM } from "../src/llm.js";
+import { biSchemaV010 } from "../src/schema.js";
 
 // ---------------------------------------------------------------------------
-// CLI argument parsing
+// ✏️  Edit your case parameters here
 // ---------------------------------------------------------------------------
 
-interface CliArgs {
-  caseId: string;
-  slug: string;
-  query: string;
-  observed: Record<string, unknown>;
-}
+const caseConfig = {
+  caseId: "003",
+  slug: "multi-series-comparison",
+  query: "quarterly revenue vs cost comparison bar chart",
+  observed: {
+    api: {},
+    render: {},
+  },
+};
 
-function parseArgs(): CliArgs {
-  const args = process.argv.slice(2);
-  let caseId = "001";
-  let slug = "unnamed";
-  let query = "";
-  let observed: Record<string, unknown> = {};
-
-  for (let i = 0; i < args.length; i++) {
-    switch (args[i]) {
-      case "--case-id": 
-        caseId = args[++i];
-        break;
-      case "--slug":
-        slug = args[++i];
-        break;
-      case "--query":
-        query = args[++i];
-        break;
-      case "--observed":
-        observed = JSON.parse(args[++i]);
-        break;
-    }
-  }
-
-  if (!query) {
-    console.error("Usage: node dist/run-evolution.js --case-id 001 --slug my-case --query '...' --observed '{...}'");
-    process.exit(1);
-  }
-
-  return { caseId, slug, query, observed };
-}
-
-// ---------------------------------------------------------------------------
-// LLM creation
-// ---------------------------------------------------------------------------
-
-function createLLM(): LLM {
-  if (process.env.MOCK === "1") {
-    console.log("[LLM] Using mock provider");
-    return createMockLLM([
-      // Approximate response: simple 1-series bar
-      JSON.stringify({
-        chartType: "bar",
-        dataSource: { metrics: ["value"], dimensions: ["category"] },
-        xAxis: { field: "category" },
-        yAxis: { field: "value" },
-        series: [{ name: "Value", field: "value" }],
-      }),
-      // Extend response: add field + corrected payload
-      JSON.stringify({
-        extension: {
-          id: "add-comparison-mode",
-          description: "Add comparison mode for multi-series charts",
-          newFields: [{
-            name: "comparisonMode",
-            description: "How to compare multiple series",
-            type: { kind: "string", enum: ["side-by-side", "stacked", "overlay"] },
-            required: false,
-          }],
-          newRules: [],
-        },
-        basePayload: {
-          chartType: "bar",
-          title: "Comparison Chart",
-          dataSource: { metrics: ["revenue", "cost"], dimensions: ["quarter"] },
-          xAxis: { field: "quarter" },
-          yAxis: { field: "revenue" },
-          series: [
-            { name: "Revenue", field: "revenue" },
-            { name: "Cost", field: "cost" },
-          ],
-        },
-        extensionPayload: { comparisonMode: "side-by-side" },
-      }),
-    ]);
-  }
-
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    console.error("Error: OPENROUTER_API_KEY is required (or set MOCK=1)");
-    process.exit(1);
-  }
-  return createOpenRouterLLM({ apiKey, model: process.env.OPENROUTER_MODEL ?? undefined });
-}
+const convergenceConfig: ConvergenceConfig = {
+  maxIterations: 5,
+  gapThreshold: 2,
+};
 
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const { caseId, slug, query, observed } = parseArgs();
+  const { caseId, slug, query, observed } = caseConfig;
   const caseName = `${caseId}-${slug}`;
 
   console.log(`\n=== Evolution Run: ${caseName} ===\n`);
@@ -144,15 +59,53 @@ async function main(): Promise<void> {
   registry.load(biSchemaV010);
   const schema = registry.current();
   const adapter = new BiAdapter();
-  const llm = createLLM();
+
+  const llm =
+    process.env.MOCK === "1"
+      ? createMockLLM([
+          JSON.stringify({
+            chartType: "bar",
+            dataSource: { metrics: ["value"], dimensions: ["category"] },
+            xAxis: { field: "category" },
+            yAxis: { field: "value" },
+            series: [{ name: "Value", field: "value" }],
+          }),
+          JSON.stringify({
+            extension: {
+              id: "add-comparison-mode",
+              description: "Add comparison mode for multi-series charts",
+              newFields: [
+                {
+                  name: "comparisonMode",
+                  description: "How to compare multiple series",
+                  type: { kind: "string", enum: ["side-by-side", "stacked", "overlay"] },
+                  required: false,
+                },
+              ],
+              newRules: [],
+            },
+            basePayload: {
+              chartType: "bar",
+              title: "Comparison Chart",
+              dataSource: { metrics: ["revenue", "cost"], dimensions: ["quarter"] },
+              xAxis: { field: "quarter" },
+              yAxis: { field: "revenue" },
+              series: [
+                { name: "Revenue", field: "revenue" },
+                { name: "Cost", field: "cost" },
+              ],
+            },
+            extensionPayload: { comparisonMode: "side-by-side" },
+          }),
+        ])
+      : createOpenRouterLLM({
+          apiKey: process.env.OPENROUTER_API_KEY!,
+          model: process.env.OPENROUTER_MODEL ?? undefined,
+        });
+
   const approximate = new BiApproximate(llm);
   const extend = new BiExtend(llm);
   const memory: Memory = { currentSchema: schema, schemaHistory: [schema], records: [] };
-
-  const convergenceConfig: ConvergenceConfig = {
-    maxIterations: 5,
-    gapThreshold: 2,
-  };
 
   const demonstration = {
     id: `demo-${caseName}`,
@@ -246,7 +199,8 @@ async function main(): Promise<void> {
 
   // Write case files
   const caseFiles = buildCaseFiles(report);
-  const caseDir = path.resolve("knowledge/cases", caseName);
+  const repoRoot = path.resolve(import.meta.dirname, "../../..");
+  const caseDir = path.join(repoRoot, "knowledge/cases", caseName);
   fs.mkdirSync(caseDir, { recursive: true });
 
   for (const [filename, content] of Object.entries(caseFiles)) {
