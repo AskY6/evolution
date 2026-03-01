@@ -26,11 +26,11 @@ import type {
   ApproximationResult,
   ExtensionResult,
 } from "@evolution/core";
-import { BiAdapter } from "../../packages/bi/src/adapter.js";
-import { BiApproximate } from "../../packages/bi/src/approximate.js";
-import { BiExtend } from "../../packages/bi/src/extend.js";
-import type { LLM } from "../../packages/bi/src/llm.js";
-import type { BiFingerprint } from "../../packages/bi/src/types.js";
+import { BiAdapter } from "../../apps/workbench/src/bi/adapter";
+import { BiApproximate } from "../../apps/workbench/src/bi/approximate";
+import { BiExtend } from "../../apps/workbench/src/bi/extend";
+import type { LLM } from "../../apps/workbench/src/bi/llm";
+import type { BiFingerprint } from "../../apps/workbench/src/bi/types";
 
 // ---------------------------------------------------------------------------
 // Helpers

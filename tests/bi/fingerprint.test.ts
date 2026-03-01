@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assessBiSeverity, isBiGapAcceptable } from "../../packages/bi/src/fingerprint.js";
+import { assessBiSeverity, isBiGapAcceptable } from "../../apps/workbench/src/bi/fingerprint";
 import type { Gap } from "@evolution/core";
 import { Severity, DiscrepancyType, GapSource } from "@evolution/core";
 

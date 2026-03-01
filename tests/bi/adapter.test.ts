@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { BiAdapter } from "../../packages/bi/src/adapter.js";
-import type { EChartsOption, BiFingerprint } from "../../packages/bi/src/types.js";
+import { BiAdapter } from "../../apps/workbench/src/bi/adapter";
+import type { EChartsOption, BiFingerprint } from "../../apps/workbench/src/bi/types";
 import type { Instance, CandidateInstance } from "@evolution/core";
 import { isLeft, isRight, Supportability } from "@evolution/core";
 import instances from "../../knowledge/schemas/v0.1.0/instances.json" with { type: "json" };

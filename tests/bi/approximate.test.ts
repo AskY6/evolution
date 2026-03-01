@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { BiApproximate } from "../../packages/bi/src/approximate.js";
-import type { LLM } from "../../packages/bi/src/llm.js";
+import { BiApproximate } from "../../apps/workbench/src/bi/approximate";
+import type { LLM } from "../../apps/workbench/src/bi/llm";
 import type { Schema, Demonstration } from "@evolution/core";
 import { isLeft, isRight } from "@evolution/core";
 
@@ -173,7 +173,7 @@ describe("BiApproximate", () => {
 
 describe("BiApproximate — full chain", () => {
   it("approximate → compile → execute produces a valid fingerprint", async () => {
-    const { BiAdapter } = await import("../../packages/bi/src/adapter.js");
+    const { BiAdapter } = await import("../../apps/workbench/src/bi/adapter");
 
     const mockResponse = JSON.stringify({
       chartType: "bar",
