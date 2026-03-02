@@ -14,8 +14,8 @@ import type {
   Either,
 } from "@evolution/core";
 import { left, right } from "@evolution/core";
-import type { BiSchema } from "./types";
-import type { LLM } from "./llm";
+import type { BiSchema } from "../core/schema";
+import type { LLM } from "../llm";
 
 export class BiApproximate implements ApproximateAction {
   constructor(private readonly llm: LLM) {}

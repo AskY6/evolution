@@ -7,7 +7,7 @@ import {
   type WorkbenchAdapter,
 } from "@evolution/core/workbench";
 import { createLocalDemoStore } from "./demo-store";
-import { biSchemaV010 } from "./schema";
+import { biSchemaV010 } from "./bi/core/schema";
 
 /** Mock LLM for demo mode — returns a placeholder Dashboard response. */
 async function mockLLM(prompt: string): Promise<string> {

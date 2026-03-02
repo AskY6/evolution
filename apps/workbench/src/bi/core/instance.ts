@@ -1,8 +1,9 @@
 /**
- * BI Validator — BiSchema + Instance → validation errors.
+ * BI Instance — DashboardPayload types + validation functions.
  *
- * Validates Instance payloads against BI-specific field definitions and rules.
- * Supports both Instance (Current) and CandidateInstance (Candidate) validation.
+ * Defines the runtime payload structure for a Dashboard Instance,
+ * and validates Instance/CandidateInstance payloads against BiSchema field
+ * definitions and rules.
  */
 
 import type {
@@ -11,12 +12,105 @@ import type {
   BiFieldDefinition,
   BiFieldType,
   BiRule,
-} from "./types";
+} from "./schema";
 import type { Instance, CandidateInstance, Payload } from "@evolution/core";
 import type { ValidationError } from "@evolution/core";
 
 // ---------------------------------------------------------------------------
-// Public API
+// Dashboard payload structure — what a BI Instance contains
+// ---------------------------------------------------------------------------
+
+/** Grid position within the dashboard layout (1-based). */
+export interface GridPosition {
+  readonly col: number;
+  readonly row: number;
+  readonly colSpan: number;
+  readonly rowSpan: number;
+}
+
+/** Dashboard grid layout dimensions. */
+export interface GridLayout {
+  readonly columns: number;
+  readonly rows: number;
+}
+
+/** Data source configuration for a single chart. */
+export interface DataSource {
+  readonly metrics: ReadonlyArray<string>;
+  readonly dimensions: ReadonlyArray<string>;
+  readonly filters?: ReadonlyArray<Filter>;
+  readonly sort?: SortConfig;
+}
+
+export interface Filter {
+  readonly field: string;
+  readonly operator: "=" | "!=" | ">" | "<" | ">=" | "<=" | "in";
+  readonly value: unknown;
+}
+
+export interface SortConfig {
+  readonly field: string;
+  readonly order: "asc" | "desc";
+}
+
+export interface AxisConfig {
+  readonly field: string;
+  readonly label?: string;
+}
+
+export interface SeriesConfig {
+  readonly name: string;
+  readonly field: string;
+  readonly color?: string;
+}
+
+/** A single chart within the dashboard. */
+export interface ChartConfig {
+  readonly id: string;
+  readonly chartType: "bar" | "line" | "pie";
+  readonly title?: string;
+  readonly position: GridPosition;
+  readonly dataSource: DataSource;
+  /** Optional for pie charts. */
+  readonly xAxis?: AxisConfig;
+  /** Optional for pie charts. */
+  readonly yAxis?: AxisConfig;
+  readonly series: ReadonlyArray<SeriesConfig>;
+}
+
+/**
+ * Shared filter that applies across multiple charts.
+ * applyTo: "all" means every chart; otherwise a list of chart ids.
+ */
+export interface SharedFilter {
+  readonly field: string;
+  readonly operator: "=" | "!=" | ">" | "<" | ">=" | "<=" | "in";
+  readonly value: unknown;
+  readonly applyTo: "all" | ReadonlyArray<string>;
+}
+
+/** Cross-chart interaction: clicking a data point in sourceChart filters targetChart. */
+export interface DataBinding {
+  readonly sourceChart: string;
+  readonly sourceField: string;
+  readonly targetChart: string;
+  readonly targetFilter: string;
+}
+
+/**
+ * Full Dashboard payload — the BI Instance payload.
+ * Replaces the former single-chart BiPayload.
+ */
+export interface DashboardPayload {
+  readonly title: string;
+  readonly layout: GridLayout;
+  readonly charts: ReadonlyArray<ChartConfig>;
+  readonly sharedFilters?: ReadonlyArray<SharedFilter>;
+  readonly dataBindings?: ReadonlyArray<DataBinding>;
+}
+
+// ---------------------------------------------------------------------------
+// Public API — validation
 // ---------------------------------------------------------------------------
 
 /** Validate an Instance against a BiSchema. Returns [] if valid. */

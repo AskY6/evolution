@@ -1,4 +1,132 @@
-import type { BiSchema } from "./bi/types";
+/**
+ * BI Schema vocabulary — field types, field definitions, rules, BiSchema, BiExtension.
+ *
+ * Also exports the biSchemaV010 constant (the initial BI Dashboard schema).
+ */
+
+// ---------------------------------------------------------------------------
+// BI Schema vocabulary — FieldType, FieldDefinition, Rule
+// ---------------------------------------------------------------------------
+
+/** Leaf type: string with optional constraints. */
+export interface BiStringType {
+  readonly kind: "string";
+  readonly enum?: ReadonlyArray<string>;
+}
+
+/** Leaf type: number with optional range. */
+export interface BiNumberType {
+  readonly kind: "number";
+  readonly min?: number;
+  readonly max?: number;
+  readonly integer?: boolean;
+}
+
+/** Leaf type: boolean. */
+export interface BiBooleanType {
+  readonly kind: "boolean";
+}
+
+/** Composite type: nested object with its own fields. */
+export interface BiObjectType {
+  readonly kind: "object";
+  readonly fields: ReadonlyArray<BiFieldDefinition>;
+}
+
+/** Collection type: ordered list of a single element type. */
+export interface BiArrayType {
+  readonly kind: "array";
+  readonly element: BiFieldType;
+  readonly minItems?: number;
+  readonly maxItems?: number;
+}
+
+/** Union type: value must conform to exactly one of the variants. */
+export interface BiUnionType {
+  readonly kind: "union";
+  readonly variants: ReadonlyArray<BiFieldType>;
+}
+
+/** All possible BI field type descriptors. */
+export type BiFieldType =
+  | BiStringType
+  | BiNumberType
+  | BiBooleanType
+  | BiObjectType
+  | BiArrayType
+  | BiUnionType;
+
+/** A single field that a BI Instance payload may (or must) contain. */
+export interface BiFieldDefinition {
+  readonly name: string;
+  readonly description: string;
+  readonly type: BiFieldType;
+  readonly required: boolean;
+  readonly defaultValue?: unknown;
+}
+
+/** Field A is required when field B has a specific value. */
+export interface BiRequiredIfRule {
+  readonly kind: "required_if";
+  readonly field: string;
+  readonly when: { readonly field: string; readonly equals: unknown };
+}
+
+/** At most one of these fields may be present. */
+export interface BiMutualExclusiveRule {
+  readonly kind: "mutual_exclusive";
+  readonly fields: ReadonlyArray<string>;
+}
+
+/** Field A can only be present when field B is also present. */
+export interface BiDependsOnRule {
+  readonly kind: "depends_on";
+  readonly field: string;
+  readonly requires: string;
+}
+
+/** All possible BI rule types. */
+export type BiRule = BiRequiredIfRule | BiMutualExclusiveRule | BiDependsOnRule;
+
+// ---------------------------------------------------------------------------
+// BiSchema — BI domain's concrete Schema (structurally extends Schema)
+// ---------------------------------------------------------------------------
+
+/**
+ * BI-specific schema with field definitions and rules.
+ *
+ * Structurally satisfies the framework's Schema interface (has id + version),
+ * and extends it with BI-specific vocabulary (fields + rules).
+ */
+export interface BiSchema {
+  readonly id: string;
+  readonly version: string;
+  readonly fields: ReadonlyArray<BiFieldDefinition>;
+  readonly rules: ReadonlyArray<BiRule>;
+}
+
+// ---------------------------------------------------------------------------
+// BiExtension — BI domain's concrete Extension (structurally extends Extension)
+// ---------------------------------------------------------------------------
+
+/**
+ * BI-specific schema extension with new fields and rules.
+ *
+ * Structurally satisfies the framework's Extension interface (has id + description),
+ * and extends it with BI-specific additions (newFields + newRules).
+ * At runtime, extensions are passed as Extension to the framework, and the
+ * BiAdapter casts them back to BiExtension to access the extra properties.
+ */
+export interface BiExtension {
+  readonly id: string;
+  readonly description: string;
+  readonly newFields: ReadonlyArray<BiFieldDefinition>;
+  readonly newRules: ReadonlyArray<BiRule>;
+}
+
+// ---------------------------------------------------------------------------
+// biSchemaV010 — initial BI Dashboard schema constant
+// ---------------------------------------------------------------------------
 
 /**
  * Initial BI Dashboard schema v0.1.0.

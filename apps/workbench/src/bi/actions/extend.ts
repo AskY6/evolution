@@ -18,8 +18,8 @@ import type {
   Either,
 } from "@evolution/core";
 import { left, right } from "@evolution/core";
-import type { BiSchema, BiExtension } from "./types";
-import type { LLM } from "./llm";
+import type { BiSchema, BiExtension } from "../core/schema";
+import type { LLM } from "../llm";
 
 export class BiExtend implements ExtendAction {
   constructor(private readonly llm: LLM) {}

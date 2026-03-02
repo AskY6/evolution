@@ -2,8 +2,8 @@
 // "What to learn" — BI-specific implementation of DomainAdapter
 
 export { BiAdapter } from "./adapter";
-export { BiApproximate } from "./approximate";
-export { BiExtend } from "./extend";
+export { BiApproximate } from "./actions/approximate";
+export { BiExtend } from "./actions/extend";
 export type { LLM } from "./llm";
 export type {
   BiSchema,
@@ -20,6 +20,9 @@ export type {
   BiRequiredIfRule,
   BiMutualExclusiveRule,
   BiDependsOnRule,
+} from "./core/schema";
+export { biSchemaV010 } from "./core/schema";
+export type {
   DashboardPayload,
   GridLayout,
   GridPosition,
@@ -31,6 +34,8 @@ export type {
   SortConfig,
   AxisConfig,
   SeriesConfig,
+} from "./core/instance";
+export type {
   EChartsOption,
   EChartsAxis,
   EChartsSeries,
@@ -38,4 +43,4 @@ export type {
   DashboardPanel,
   DashboardFingerprint,
   ChartFingerprint,
-} from "./types";
+} from "./core/renderer";
