@@ -1,12 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { SchemaRegistry } from "@evolution/core";
+import type { Demonstration } from "@evolution/core";
 import { BiAdapter, BiApproximate, BiExtend } from "./bi";
 import {
   Workbench,
   createEvolutionEngine,
   type WorkbenchAdapter,
+  type DemoStore,
 } from "@evolution/core/workbench";
-import { createLocalDemoStore } from "./demo-store";
+import { createLocalDemoStore, createEvolutionFolderStore } from "./demo-store";
 import { biSchemaV010 } from "./bi/core/schema";
 
 /** Mock LLM for demo mode — returns a placeholder Dashboard response. */
@@ -66,7 +68,7 @@ async function mockLLM(prompt: string): Promise<string> {
 }
 
 export function App() {
-  const { adapter, registry, engine, demoStore } = useMemo(() => {
+  const { adapter, registry, engine } = useMemo(() => {
     const registry = new SchemaRegistry();
     registry.load(biSchemaV010);
 
@@ -84,9 +86,24 @@ export function App() {
       convergenceConfig: { maxIterations: 3, gapThreshold: 1 },
     });
 
-    const demoStore = createLocalDemoStore();
+    return { adapter, registry, engine };
+  }, []);
 
-    return { adapter, registry, engine, demoStore };
+  // Start with localStorage as an immediate fallback; swap to the .evolution/
+  // folder store once the dev server responds. If the server is unavailable
+  // (e.g. production build), the localStorage store remains active.
+  const [demoStore, setDemoStore] = useState<DemoStore>(() => createLocalDemoStore());
+
+  useEffect(() => {
+    fetch("/api/demos")
+      .then((r) => {
+        if (!r.ok) throw new Error(r.statusText);
+        return r.json() as Promise<Demonstration[]>;
+      })
+      .then((initial) => setDemoStore(createEvolutionFolderStore(initial)))
+      .catch(() => {
+        // Server not available — keep localStorage store silently
+      });
   }, []);
 
   return (
