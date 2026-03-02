@@ -2,18 +2,21 @@
  * BiAdapter — BI domain implementation of DomainAdapter.
  *
  * Translates between the evolution framework's generic types and
- * BI-specific ECharts visualization:
+ * BI Dashboard visualization:
  *
- * - compile:     Instance payload → ECharts option
- * - compileC:    CandidateInstance → ECharts option (with runtime checks)
- * - execute:     ECharts option → simulated Behavior
- * - fingerprint: Raw ECharts-like config → structured Behavior
+ * - compile:     Instance payload (DashboardPayload) → DashboardExecutable
+ * - compileC:    CandidateInstance → DashboardExecutable (with runtime checks)
+ * - execute:     DashboardExecutable → DashboardFingerprint (simulated behavior)
+ * - fingerprint: Raw dashboard-like config → structured Behavior
  * - runtime:     BI rendering engine capability declaration
  */
 
 import type {
   DomainAdapter,
   Either,
+  Schema,
+  CandidateSchema,
+  Extension,
   Instance,
   CandidateInstance,
   Executable,
@@ -22,16 +25,22 @@ import type {
   RuntimeCapability,
   CompileError,
   ExecuteError,
+  ValidationError,
 } from "@evolution/core";
 import { left, right, Supportability } from "@evolution/core";
 import type {
-  BiPayload,
+  BiSchema,
+  BiExtension,
+  DashboardPayload,
+  ChartConfig,
   EChartsOption,
   EChartsSeries,
-  BiFingerprint,
-  ApiFingerprint,
-  RenderFingerprint,
+  DashboardExecutable,
+  DashboardPanel,
+  DashboardFingerprint,
+  ChartFingerprint,
 } from "./types";
+import { validateBiInstance, validateBiCandidateInstance } from "./validator";
 
 // ---------------------------------------------------------------------------
 // Runtime capability declaration
@@ -39,19 +48,22 @@ import type {
 
 const BI_RUNTIME: RuntimeCapability = {
   features: [
-    { name: "chart:bar", supportability: Supportability.Supported, description: "Bar chart rendering" },
-    { name: "chart:line", supportability: Supportability.Supported, description: "Line chart rendering" },
-    { name: "chart:pie", supportability: Supportability.Feasible, description: "Pie chart rendering (not yet implemented)" },
-    { name: "chart:scatter", supportability: Supportability.Feasible, description: "Scatter plot rendering (not yet implemented)" },
-    { name: "chart:radar", supportability: Supportability.Unfeasible, description: "Radar chart (no rendering engine support)" },
-    { name: "axis:category", supportability: Supportability.Supported },
-    { name: "axis:value", supportability: Supportability.Supported },
-    { name: "axis:time", supportability: Supportability.Feasible, description: "Time axis (needs date formatting support)" },
+    { name: "chart:bar",    supportability: Supportability.Supported, description: "Bar chart rendering" },
+    { name: "chart:line",   supportability: Supportability.Supported, description: "Line chart rendering" },
+    { name: "chart:pie",    supportability: Supportability.Supported, description: "Pie chart rendering" },
+    { name: "chart:scatter",supportability: Supportability.Feasible,  description: "Scatter plot (not yet implemented)" },
+    { name: "chart:radar",  supportability: Supportability.Unfeasible,description: "Radar chart (no engine support)" },
+    { name: "axis:category",supportability: Supportability.Supported },
+    { name: "axis:value",   supportability: Supportability.Supported },
+    { name: "axis:time",    supportability: Supportability.Feasible, description: "Time axis (needs date formatting)" },
     { name: "filter:basic", supportability: Supportability.Supported, description: "Basic comparison filters" },
-    { name: "filter:in", supportability: Supportability.Supported, description: "IN-list filters" },
-    { name: "sort:single", supportability: Supportability.Supported, description: "Single-field sorting" },
-    { name: "legend", supportability: Supportability.Supported, description: "Chart legend" },
-    { name: "title", supportability: Supportability.Supported, description: "Chart title" },
+    { name: "filter:in",    supportability: Supportability.Supported, description: "IN-list filters" },
+    { name: "sort:single",  supportability: Supportability.Supported, description: "Single-field sorting" },
+    { name: "legend",       supportability: Supportability.Supported },
+    { name: "title",        supportability: Supportability.Supported },
+    { name: "dashboard:multi-chart",    supportability: Supportability.Supported, description: "Multiple charts in one dashboard" },
+    { name: "dashboard:shared-filters", supportability: Supportability.Feasible,  description: "Shared filters across charts (needs global state)" },
+    { name: "dashboard:data-binding",   supportability: Supportability.Feasible,  description: "Cross-chart interactions (needs event bus)" },
   ],
 };
 
@@ -62,9 +74,9 @@ const BI_RUNTIME: RuntimeCapability = {
 export class BiAdapter implements DomainAdapter {
   compile(instance: Instance): Either<CompileError, Executable> {
     try {
-      const payload = instance.payload as unknown as BiPayload;
-      const option = compileToECharts(payload);
-      return right({ format: "echarts", artifact: option });
+      const payload = instance.payload as unknown as DashboardPayload;
+      const artifact = compileDashboard(payload);
+      return right({ format: "echarts-dashboard", artifact });
     } catch (err) {
       return left({
         kind: "compile",
@@ -77,9 +89,8 @@ export class BiAdapter implements DomainAdapter {
     const merged = {
       ...candidate.basePayload,
       ...candidate.extensionPayload,
-    } as unknown as BiPayload;
+    } as unknown as DashboardPayload;
 
-    // Check runtime capabilities
     const requiredFeatures = inferRequiredFeatures(merged);
     const blocked = requiredFeatures.filter(
       (f) => lookupFeature(f) === Supportability.Unfeasible,
@@ -99,8 +110,8 @@ export class BiAdapter implements DomainAdapter {
     }
 
     try {
-      const option = compileToECharts(merged);
-      const executable: Executable = { format: "echarts", artifact: option };
+      const artifact = compileDashboard(merged);
+      const executable: Executable = { format: "echarts-dashboard", artifact };
 
       if (degraded.length > 0) {
         return {
@@ -126,7 +137,7 @@ export class BiAdapter implements DomainAdapter {
   }
 
   execute(executable: Executable): Either<ExecuteError, Behavior> {
-    if (executable.format !== "echarts") {
+    if (executable.format !== "echarts-dashboard") {
       return left({
         kind: "execute",
         message: `Unsupported executable format: "${executable.format}"`,
@@ -134,8 +145,8 @@ export class BiAdapter implements DomainAdapter {
     }
 
     try {
-      const option = executable.artifact as EChartsOption;
-      const fingerprint = extractFingerprint(option);
+      const dashboard = executable.artifact as DashboardExecutable;
+      const fingerprint = extractFingerprint(dashboard);
       return right({ fingerprint: fingerprint as unknown as Record<string, unknown> });
     } catch (err) {
       return left({
@@ -146,107 +157,198 @@ export class BiAdapter implements DomainAdapter {
   }
 
   fingerprint(raw: unknown): Behavior {
-    // Handles raw ECharts option objects from expert Pro Code
-    const option = raw as EChartsOption;
-    const fp = extractFingerprint(option);
+    // Accepts a raw DashboardExecutable-like object from expert Pro Code
+    const dashboard = raw as DashboardExecutable;
+    const fp = extractFingerprint(dashboard);
     return { fingerprint: fp as unknown as Record<string, unknown> };
   }
 
   runtime(): RuntimeCapability {
     return BI_RUNTIME;
   }
+
+  validate(schema: Schema, instance: Instance): ReadonlyArray<ValidationError> {
+    return validateBiInstance(schema as BiSchema, instance);
+  }
+
+  validateCandidate(
+    candidateSchema: CandidateSchema,
+    candidate: CandidateInstance,
+  ): ReadonlyArray<ValidationError> {
+    const base = candidateSchema.baseSchema as BiSchema;
+    const exts = candidateSchema.extensions as ReadonlyArray<BiExtension>;
+    return validateBiCandidateInstance(base, exts, candidate);
+  }
+
+  materialize(
+    base: Schema,
+    extensions: ReadonlyArray<Extension>,
+    newVersion: string,
+  ): Schema {
+    const b = base as BiSchema;
+    const exts = extensions as ReadonlyArray<BiExtension>;
+    return {
+      id: b.id,
+      version: newVersion,
+      fields: [...b.fields, ...exts.flatMap((e) => e.newFields)],
+      rules: [...b.rules, ...exts.flatMap((e) => e.newRules)],
+    } satisfies BiSchema;
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Compilation: BiPayload → EChartsOption
+// Compilation: DashboardPayload → DashboardExecutable
 // ---------------------------------------------------------------------------
 
-function compileToECharts(payload: BiPayload): EChartsOption {
-  if (!payload.chartType) {
-    throw new Error("Missing chartType in payload");
-  }
-  if (!payload.series || payload.series.length === 0) {
-    throw new Error("At least one series is required");
+function compileDashboard(payload: DashboardPayload): DashboardExecutable {
+  if (!payload.charts || payload.charts.length === 0) {
+    throw new Error("Dashboard must contain at least one chart");
   }
 
-  const series: EChartsSeries[] = payload.series.map((s) => ({
-    type: payload.chartType,
+  const panels: DashboardPanel[] = payload.charts.map((chart) => ({
+    id: chart.id,
+    position: chart.position,
+    option: compileChart(chart),
+  }));
+
+  return { title: payload.title, layout: payload.layout, panels };
+}
+
+function compileChart(chart: ChartConfig): EChartsOption {
+  if (!chart.series || chart.series.length === 0) {
+    throw new Error(`Chart "${chart.id}" must have at least one series`);
+  }
+
+  if (chart.chartType === "pie") {
+    return compilePieChart(chart);
+  }
+
+  return compileCartesianChart(chart);
+}
+
+function compileCartesianChart(chart: ChartConfig): EChartsOption {
+  if (!chart.xAxis) throw new Error(`Chart "${chart.id}" requires xAxis for type "${chart.chartType}"`);
+
+  const series: EChartsSeries[] = chart.series.map((s) => ({
+    type: chart.chartType as "bar" | "line",
     name: s.name,
     encode: {
-      x: payload.xAxis.field,
+      x: chart.xAxis!.field,
       y: s.field,
     },
     ...(s.color ? { itemStyle: { color: s.color } } : {}),
   }));
 
-  const option: EChartsOption = {
-    ...(payload.title ? { title: { text: payload.title } } : {}),
+  return {
+    ...(chart.title ? { title: { text: chart.title } } : {}),
     xAxis: {
       type: "category",
-      name: payload.xAxis.label,
-      data: payload.dataSource.dimensions,
+      name: chart.xAxis?.label,
+      data: chart.dataSource.dimensions as string[],
     },
     yAxis: {
       type: "value",
-      name: payload.yAxis.label,
+      name: chart.yAxis?.label,
     },
     series,
     ...(series.length > 1 ? { legend: { data: series.map((s) => s.name) } } : {}),
   };
+}
 
-  return option;
+function compilePieChart(chart: ChartConfig): EChartsOption {
+  // For pie, series[0].field is the value field; dimensions serve as slice names
+  const series: EChartsSeries[] = chart.series.map((s) => ({
+    type: "pie" as const,
+    name: s.name,
+    data: chart.dataSource.dimensions.map((dim, i) => ({
+      name: String(dim),
+      value: i + 1, // placeholder — real data comes from runtime
+    })),
+    ...(s.color ? { itemStyle: { color: s.color } } : {}),
+  }));
+
+  return {
+    ...(chart.title ? { title: { text: chart.title } } : {}),
+    series,
+    legend: { data: chart.dataSource.dimensions as string[] },
+  };
 }
 
 // ---------------------------------------------------------------------------
-// Execution: EChartsOption → BiFingerprint
+// Execution: DashboardExecutable → DashboardFingerprint
 // ---------------------------------------------------------------------------
 
-function extractFingerprint(option: EChartsOption): BiFingerprint {
-  const api: ApiFingerprint = {
-    metrics: option.series.map((s) => s.encode.y),
-    dimensions: option.xAxis.data ? [...option.xAxis.data] : [],
-    filters: [], // Filters are applied before compilation, not visible in the option
-    sort: undefined,
-  };
+function extractFingerprint(dashboard: DashboardExecutable): DashboardFingerprint {
+  const charts: ChartFingerprint[] = dashboard.panels.map((panel) => {
+    const metrics = panel.option.series
+      .filter((s) => s.encode?.y)
+      .map((s) => s.encode!.y);
+    const dimensions = panel.option.xAxis?.data
+      ? [...panel.option.xAxis.data]
+      : [];
 
-  const render: RenderFingerprint = {
-    chartType: option.series.length > 0 ? option.series[0].type : "unknown",
-    seriesCount: option.series.length,
-    seriesTypes: [...new Set(option.series.map((s) => s.type))],
-    xAxisType: option.xAxis.type,
-    yAxisType: option.yAxis.type,
-    hasTitle: option.title !== undefined,
-    hasLegend: option.legend !== undefined,
-  };
+    return {
+      id: panel.id,
+      chartType: panel.option.series[0]?.type ?? "unknown",
+      seriesCount: panel.option.series.length,
+      metrics,
+      dimensions,
+    };
+  });
 
-  return { api, render };
+  const allMetrics = [...new Set(charts.flatMap((c) => c.metrics))];
+  const allDimensions = [...new Set(charts.flatMap((c) => c.dimensions))];
+  const chartTypes = [...new Set(charts.map((c) => c.chartType))];
+
+  return {
+    chartCount: dashboard.panels.length,
+    chartTypes,
+    layoutShape: { columns: dashboard.layout.columns, rows: dashboard.layout.rows },
+    allMetrics,
+    allDimensions,
+    sharedFilterCount: 0, // populated from raw payload when available
+    dataBindingCount: 0,
+    charts,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Runtime feature inference
 // ---------------------------------------------------------------------------
 
-function inferRequiredFeatures(payload: BiPayload): string[] {
-  const features: string[] = [];
+function inferRequiredFeatures(payload: DashboardPayload): string[] {
+  const features: string[] = ["dashboard:multi-chart"];
 
-  features.push(`chart:${payload.chartType}`);
-  features.push("axis:category"); // xAxis is always category for bar/line
-  features.push("axis:value");    // yAxis is always value for bar/line
+  if (!payload.charts) return features;
 
-  if (payload.dataSource.filters && payload.dataSource.filters.length > 0) {
-    const hasIn = payload.dataSource.filters.some((f) => f.operator === "in");
-    features.push("filter:basic");
-    if (hasIn) features.push("filter:in");
+  for (const chart of payload.charts) {
+    features.push(`chart:${chart.chartType}`);
+
+    if (chart.chartType !== "pie") {
+      features.push("axis:category", "axis:value");
+    }
+
+    if (chart.dataSource?.filters && chart.dataSource.filters.length > 0) {
+      features.push("filter:basic");
+      if (chart.dataSource.filters.some((f) => f.operator === "in")) {
+        features.push("filter:in");
+      }
+    }
+
+    if (chart.dataSource?.sort) features.push("sort:single");
+    if (chart.title) features.push("title");
+    if (chart.series && chart.series.length > 1) features.push("legend");
   }
 
-  if (payload.dataSource.sort) {
-    features.push("sort:single");
+  if (payload.sharedFilters && payload.sharedFilters.length > 0) {
+    features.push("dashboard:shared-filters");
   }
 
-  if (payload.title) features.push("title");
-  if (payload.series.length > 1) features.push("legend");
+  if (payload.dataBindings && payload.dataBindings.length > 0) {
+    features.push("dashboard:data-binding");
+  }
 
-  return features;
+  return [...new Set(features)];
 }
 
 function lookupFeature(name: string): Supportability {

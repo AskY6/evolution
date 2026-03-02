@@ -9,43 +9,60 @@ import {
 import { createLocalDemoStore } from "./demo-store";
 import { biSchemaV010 } from "./schema";
 
-/** Mock LLM for demo mode — returns a placeholder response. */
+/** Mock LLM for demo mode — returns a placeholder Dashboard response. */
 async function mockLLM(prompt: string): Promise<string> {
   // Simulate network delay
-  await new Promise((r) => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 600));
 
-  // Return a minimal valid response based on prompt content
+  const mockDashboard = {
+    title: "Revenue Overview Dashboard",
+    layout: { columns: 2, rows: 2 },
+    charts: [
+      {
+        id: "chart-revenue",
+        chartType: "bar",
+        title: "Monthly Revenue",
+        position: { col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+        dataSource: {
+          metrics: ["revenue"],
+          dimensions: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+        },
+        xAxis: { field: "month", label: "Month" },
+        yAxis: { field: "revenue", label: "Revenue (¥)" },
+        series: [{ name: "Revenue", field: "revenue" }],
+      },
+      {
+        id: "chart-users",
+        chartType: "line",
+        title: "User Growth",
+        position: { col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+        dataSource: {
+          metrics: ["userCount"],
+          dimensions: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+        },
+        xAxis: { field: "month", label: "Month" },
+        yAxis: { field: "userCount", label: "Users" },
+        series: [{ name: "Users", field: "userCount" }],
+      },
+    ],
+    sharedFilters: [],
+    dataBindings: [],
+  };
+
   if (prompt.includes("extension assistant")) {
     return JSON.stringify({
       extension: {
         id: "mock-ext",
-        description: "Mock extension for demo",
+        description: "Mock dashboard extension for demo",
         newFields: [],
         newRules: [],
       },
-      basePayload: {
-        chartType: "bar",
-        title: "Mock Chart",
-        dataSource: { metrics: ["revenue"], dimensions: ["month"] },
-        xAxis: { field: "month" },
-        yAxis: { field: "revenue" },
-        series: [{ name: "Revenue", field: "revenue" }],
-      },
+      basePayload: mockDashboard,
       extensionPayload: {},
     });
   }
 
-  return JSON.stringify({
-    chartType: "bar",
-    title: "Mock Chart",
-    dataSource: {
-      metrics: ["revenue"],
-      dimensions: ["month"],
-    },
-    xAxis: { field: "month" },
-    yAxis: { field: "revenue" },
-    series: [{ name: "Revenue", field: "revenue" }],
-  });
+  return JSON.stringify(mockDashboard);
 }
 
 export function App() {

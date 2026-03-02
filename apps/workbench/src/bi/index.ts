@@ -4,10 +4,28 @@
 export { BiAdapter } from "./adapter";
 export { BiApproximate } from "./approximate";
 export { BiExtend } from "./extend";
-export { assessBiSeverity, isBiGapAcceptable, type BiSeverityAssessment } from "./fingerprint";
 export type { LLM } from "./llm";
 export type {
-  BiPayload,
+  BiSchema,
+  BiExtension,
+  BiFieldDefinition,
+  BiFieldType,
+  BiStringType,
+  BiNumberType,
+  BiBooleanType,
+  BiObjectType,
+  BiArrayType,
+  BiUnionType,
+  BiRule,
+  BiRequiredIfRule,
+  BiMutualExclusiveRule,
+  BiDependsOnRule,
+  DashboardPayload,
+  GridLayout,
+  GridPosition,
+  ChartConfig,
+  SharedFilter,
+  DataBinding,
   DataSource,
   Filter,
   SortConfig,
@@ -16,7 +34,8 @@ export type {
   EChartsOption,
   EChartsAxis,
   EChartsSeries,
-  BiFingerprint,
-  ApiFingerprint,
-  RenderFingerprint,
+  DashboardExecutable,
+  DashboardPanel,
+  DashboardFingerprint,
+  ChartFingerprint,
 } from "./types";
