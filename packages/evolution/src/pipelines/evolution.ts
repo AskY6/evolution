@@ -106,6 +106,7 @@ export async function runEvolution(
     demonstrationId: demonstration.id,
     gap: approxResult.gap,
     iterations: extensionResult.iterations,
+    adapter,
   });
 
   if (isLeft(codifyResult)) {

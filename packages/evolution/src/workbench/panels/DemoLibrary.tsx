@@ -102,16 +102,13 @@ export function DemoLibrary({ demos, schema, onSelectDemo }: DemoLibraryProps) {
   );
 }
 
-function SchemaTag({ demo, schema }: { demo: Demonstration; schema: Schema }) {
-  // Simple heuristic: check if the demo's fingerprint keys are a subset of schema fields
-  const fieldNames = new Set(schema.fields.map((f) => f.name));
-  const fpKeys = Object.keys(demo.observedBehavior.fingerprint);
-  const isSchemaIn = fpKeys.length > 0 && fpKeys.every((k) => fieldNames.has(k));
-
+function SchemaTag({ demo, schema: _schema }: { demo: Demonstration; schema: Schema }) {
+  // Schema structure is domain-specific; display a neutral schema reference tag.
+  const hasBehavior = Object.keys(demo.observedBehavior.fingerprint).length > 0;
   return (
     <Tag
-      label={isSchemaIn ? "Schema-in" : "Schema-out"}
-      variant={isSchemaIn ? "success" : "warning"}
+      label={hasBehavior ? "Has behavior" : "No behavior"}
+      variant={hasBehavior ? "success" : "warning"}
     />
   );
 }

@@ -8,7 +8,7 @@
 
 import type { ReactNode } from "react";
 import type { DomainAdapter } from "../adapter.js";
-import type { Schema, CandidateSchema } from "../types/schema.js";
+import type { Schema } from "../types/schema.js";
 import type { Demonstration } from "../types/demonstration.js";
 import type { Gap } from "../types/gap.js";
 import type { Stage, ApproxOutcome, ExtensionOutcome } from "../types/pipeline.js";

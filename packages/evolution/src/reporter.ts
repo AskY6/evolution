@@ -179,8 +179,8 @@ export function formatCaseReport(report: CaseReport): string {
       "",
       `## Schema Change`,
       "",
-      `- **Before:** ${report.schemaBefore.version} (${report.schemaBefore.fields.length} fields)`,
-      `- **After:** ${report.schemaAfter.version} (${report.schemaAfter.fields.length} fields)`,
+      `- **Before:** ${report.schemaBefore.id}@${report.schemaBefore.version}`,
+      `- **After:** ${report.schemaAfter.id}@${report.schemaAfter.version}`,
     );
   }
 

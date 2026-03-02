@@ -5,18 +5,6 @@ export type {
   Schema,
   CandidateSchema,
   Extension,
-  FieldDefinition,
-  FieldType,
-  StringType,
-  NumberType,
-  BooleanType,
-  ObjectType,
-  ArrayType,
-  UnionType,
-  Rule,
-  RequiredIfRule,
-  MutualExclusiveRule,
-  DependsOnRule,
 } from "./schema.js";
 
 // Instance

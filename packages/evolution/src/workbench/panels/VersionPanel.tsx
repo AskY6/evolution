@@ -28,10 +28,7 @@ export function VersionPanel({ schemaRegistry }: VersionPanelProps) {
           </span>
           <Tag label="Active" variant="success" />
         </div>
-        <div className="text-xs text-slate-500 mb-2">
-          {current.fields.length} fields, {current.rules.length} rules
-        </div>
-        <JsonView data={schemaToSummary(current)} defaultExpanded={false} />
+        <JsonView data={current as unknown as Record<string, unknown>} defaultExpanded={false} />
       </Card>
 
       {/* Version timeline */}
@@ -65,9 +62,6 @@ export function VersionPanel({ schemaRegistry }: VersionPanelProps) {
                         v{schema.version}
                       </span>
                       {isCurrent && <Tag label="Current" variant="success" />}
-                      <span className="text-xs text-slate-500">
-                        {schema.fields.length} fields
-                      </span>
                     </div>
 
                     {!isCurrent && (
@@ -84,32 +78,10 @@ export function VersionPanel({ schemaRegistry }: VersionPanelProps) {
 
                   {isExpanded && (
                     <div className="mt-2 pt-2 border-t border-slate-100">
-                      <div className="grid grid-cols-2 gap-3 text-xs">
-                        <div>
-                          <span className="text-slate-500">Fields</span>
-                          <div className="mt-1 space-y-0.5">
-                            {schema.fields.map((f) => (
-                              <div key={f.name} className="flex items-center gap-1">
-                                <span className="font-mono text-slate-700">{f.name}</span>
-                                <span className="text-slate-400">({f.type.kind})</span>
-                                {f.required && (
-                                  <Tag label="required" variant="info" />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">Rules</span>
-                          <div className="mt-1">
-                            {schema.rules.length > 0 ? (
-                              <JsonView data={schema.rules} defaultExpanded={false} />
-                            ) : (
-                              <span className="text-slate-400">No rules</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      <JsonView
+                        data={schema as unknown as Record<string, unknown>}
+                        defaultExpanded={true}
+                      />
                     </div>
                   )}
                 </div>
@@ -122,13 +94,3 @@ export function VersionPanel({ schemaRegistry }: VersionPanelProps) {
   );
 }
 
-function schemaToSummary(schema: Schema) {
-  return {
-    fields: schema.fields.map((f) => ({
-      name: f.name,
-      type: f.type.kind,
-      required: f.required,
-    })),
-    rules: schema.rules.map((r) => r.kind),
-  };
-}

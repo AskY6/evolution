@@ -15,9 +15,8 @@ import type { Memory, EvolutionRecord } from "../types/memory.js";
 import { EvolutionOutcome } from "../types/memory.js";
 import type { Gap } from "../types/gap.js";
 import type { PromoteError } from "../types/errors.js";
-import type { Either } from "../adapter.js";
+import type { DomainAdapter, Either } from "../adapter.js";
 import { left, right } from "../adapter.js";
-import { materialize } from "../schema-registry.js";
 
 // ---------------------------------------------------------------------------
 // Input
@@ -31,6 +30,7 @@ export interface CodificationInput {
   readonly demonstrationId: string;
   readonly gap: Gap;
   readonly iterations: number;
+  readonly adapter: DomainAdapter;
 }
 
 // ---------------------------------------------------------------------------
@@ -47,14 +47,14 @@ export interface CodificationInput {
 export function runCodification(
   input: CodificationInput,
 ): Either<PromoteError, Memory> {
-  const { memory, candidateSchema, demonstrationId, gap, iterations } = input;
+  const { memory, candidateSchema, demonstrationId, gap, iterations, adapter } = input;
 
   try {
     const fromVersion = memory.currentSchema.version;
     const newVersion = bumpMinorVersion(fromVersion);
 
-    // Materialize: merge extensions into a new flat Schema
-    const newSchema: Schema = materialize(
+    // Materialize: domain adapter merges extensions into a new flat Schema
+    const newSchema: Schema = adapter.materialize(
       candidateSchema.baseSchema,
       candidateSchema.extensions,
       newVersion,

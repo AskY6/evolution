@@ -7,9 +7,10 @@
  * Dependency rule: packages/bi → packages/evolution ONLY via DomainAdapter.
  */
 
+import type { Schema, CandidateSchema, Extension } from "./types/schema.js";
 import type { Instance, CandidateInstance } from "./types/instance.js";
 import type { CompileResult, Executable } from "./types/compile.js";
-import type { CompileError, ExecuteError } from "./types/errors.js";
+import type { CompileError, ExecuteError, ValidationError } from "./types/errors.js";
 import type { Behavior } from "./types/demonstration.js";
 import type { RuntimeCapability } from "./types/runtime.js";
 
@@ -110,4 +111,35 @@ export interface DomainAdapter {
    * features are Supported, Feasible, or Unfeasible.
    */
   runtime(): RuntimeCapability;
+
+  /**
+   * Validate a trusted Instance against a Schema.
+   *
+   * The domain layer owns the structural knowledge (fields, rules, types)
+   * and performs the actual validation. Returns [] if the instance is valid.
+   */
+  validate(schema: Schema, instance: Instance): ReadonlyArray<ValidationError>;
+
+  /**
+   * Validate a CandidateInstance against a CandidateSchema.
+   *
+   * Validates base payload against the base schema and extension payload
+   * against the extension fields. Returns [] if the candidate is valid.
+   */
+  validateCandidate(
+    candidateSchema: CandidateSchema,
+    candidate: CandidateInstance,
+  ): ReadonlyArray<ValidationError>;
+
+  /**
+   * Materialize a CandidateSchema's extensions into a new flat Schema.
+   *
+   * The domain layer knows how to merge base + extensions into a concrete
+   * Schema. The result is the fully-realized trusted Schema for the new version.
+   */
+  materialize(
+    base: Schema,
+    extensions: ReadonlyArray<Extension>,
+    newVersion: string,
+  ): Schema;
 }

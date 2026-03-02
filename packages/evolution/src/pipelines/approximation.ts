@@ -10,7 +10,6 @@ import type { Demonstration } from "../types/demonstration.js";
 import type { ApproximateAction } from "../actions/approximate.js";
 import type { DomainAdapter } from "../adapter.js";
 import { isLeft } from "../adapter.js";
-import { validateInstance } from "../validator.js";
 import { compare } from "../comparator.js";
 import type { ApproxOutcome, PipelineFailed } from "../types/pipeline.js";
 import { Stage } from "../types/pipeline.js";
@@ -98,7 +97,7 @@ export async function runApproximation(
   const instance = approxResult.right;
 
   // 3. Validate: Schema + Instance → errors?
-  const errors = validateInstance(schema, instance);
+  const errors = adapter.validate(schema, instance);
   if (errors.length > 0) {
     return {
       kind: "failed",

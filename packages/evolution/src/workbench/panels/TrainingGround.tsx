@@ -1,4 +1,5 @@
 import type { Demonstration } from "../../types/index.js";
+import type { DomainAdapter } from "../../adapter.js";
 import type { PipelineState } from "../hooks/usePipeline.js";
 import type { SchemaRegistryState } from "../hooks/useSchemaRegistry.js";
 import type { DemosState } from "../hooks/useDemos.js";
@@ -14,6 +15,7 @@ export interface TrainingGroundProps {
   demos: DemosState;
   pipeline: PipelineState;
   schemaRegistry: SchemaRegistryState;
+  adapter: DomainAdapter;
   preview?: PreviewCapability;
 }
 
@@ -21,6 +23,7 @@ export function TrainingGround({
   demos,
   pipeline,
   schemaRegistry,
+  adapter,
   preview,
 }: TrainingGroundProps) {
   const handleTrain = (demo: Demonstration) => {
@@ -35,7 +38,12 @@ export function TrainingGround({
       const ext = pipeline.result.extOutcome;
       const current = schemaRegistry.current;
       const newVersion = bumpMinor(current.version);
-      schemaRegistry.promote(ext.candidateSchema, newVersion);
+      const newSchema = adapter.materialize(
+        ext.candidateSchema.baseSchema,
+        ext.candidateSchema.extensions,
+        newVersion,
+      );
+      schemaRegistry.promote(newSchema);
     }
   };
 
@@ -146,20 +154,10 @@ export function TrainingGround({
             {result.extOutcome.candidateSchema.extensions.map((ext, i) => (
               <div key={i} className="border border-slate-200 rounded p-3">
                 <div className="text-xs font-medium text-slate-700 mb-1">{ext.description}</div>
-                {ext.newFields.length > 0 && (
-                  <div className="mb-1">
-                    <span className="text-xs text-slate-500">New fields: </span>
-                    {ext.newFields.map((f) => (
-                      <Tag key={f.name} label={f.name} variant="info" className="mr-1" />
-                    ))}
-                  </div>
-                )}
-                {ext.newRules.length > 0 && (
-                  <div>
-                    <span className="text-xs text-slate-500">New rules: </span>
-                    <JsonView data={ext.newRules} defaultExpanded={false} />
-                  </div>
-                )}
+                <JsonView
+                  data={ext as unknown as Record<string, unknown>}
+                  defaultExpanded={false}
+                />
               </div>
             ))}
           </div>

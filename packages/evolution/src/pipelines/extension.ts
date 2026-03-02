@@ -22,7 +22,6 @@ import type { Constraint } from "../types/compile.js";
 import type { DomainAdapter } from "../adapter.js";
 import { isLeft } from "../adapter.js";
 import type { ExtendAction } from "../actions/extend.js";
-import { validateCandidateInstance } from "../validator.js";
 import { compare } from "../comparator.js";
 import { SEVERITY_ORDINAL } from "./approximation.js";
 
@@ -143,7 +142,7 @@ export async function runExtension(
     latestCandidateInstance = candidateInstance;
 
     // 2. ValidateC: CandidateSchema + CandidateInstance → errors?
-    const validationErrors = validateCandidateInstance(candidateSchema, candidateInstance);
+    const validationErrors = adapter.validateCandidate(candidateSchema, candidateInstance);
     if (validationErrors.length > 0) {
       return {
         kind: "failed",

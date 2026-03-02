@@ -63,6 +63,7 @@ export function Workbench({ adapter, registry, engine, demoStore }: WorkbenchPro
           demos={demos}
           pipeline={pipeline}
           schemaRegistry={schemaRegistry}
+          adapter={adapter}
           preview={preview}
         />
       )}

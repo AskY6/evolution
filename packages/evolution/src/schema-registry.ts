@@ -10,7 +10,7 @@
  * In-memory implementation — can be backed by persistent storage later.
  */
 
-import type { Schema, CandidateSchema, Extension, FieldDefinition, Rule } from "./types/schema.js";
+import type { Schema } from "./types/schema.js";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -48,24 +48,19 @@ export class SchemaRegistry {
   }
 
   /**
-   * Promote a CandidateSchema to a new trusted Schema version.
+   * Register an already-materialized Schema as the current version.
    *
-   * Merges the base schema's fields/rules with all extension fields/rules.
-   * The result becomes the new current schema.
+   * The caller is responsible for materializing the schema (via
+   * DomainAdapter.materialize) before calling promote. This method
+   * only registers and activates the schema.
    *
-   * @param candidate   - The CandidateSchema to promote.
-   * @param newVersion  - The version string for the promoted schema.
-   * @returns The newly created Schema.
+   * @param schema - The already-materialized Schema to promote.
+   * @returns The promoted Schema.
    */
-  promote(candidate: CandidateSchema, newVersion: string): Schema {
-    const base = candidate.baseSchema;
-
-    const promoted: Schema = materialize(base, candidate.extensions, newVersion);
-
-    this.load(promoted);
-    this.currentId = versionKey(promoted.id, promoted.version);
-
-    return promoted;
+  promote(schema: Schema): Schema {
+    this.load(schema);
+    this.currentId = versionKey(schema.id, schema.version);
+    return schema;
   }
 
   /**
@@ -92,39 +87,6 @@ export class SchemaRegistry {
   isEmpty(): boolean {
     return this.schemas.size === 0;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Materialization — CandidateSchema → Schema
-// ---------------------------------------------------------------------------
-
-/**
- * Materialize a CandidateSchema into a flat Schema.
- *
- * Extensions only add fields and rules — they never remove or modify
- * existing ones (backward compatibility guarantee). The materialized
- * schema contains all base fields + extension fields, all base rules +
- * extension rules.
- */
-export function materialize(
-  base: Schema,
-  extensions: ReadonlyArray<Extension>,
-  newVersion: string,
-): Schema {
-  const allNewFields: FieldDefinition[] = [];
-  const allNewRules: Rule[] = [];
-
-  for (const ext of extensions) {
-    allNewFields.push(...ext.newFields);
-    allNewRules.push(...ext.newRules);
-  }
-
-  return {
-    id: base.id,
-    version: newVersion,
-    fields: [...base.fields, ...allNewFields],
-    rules: [...base.rules, ...allNewRules],
-  };
 }
 
 // ---------------------------------------------------------------------------
